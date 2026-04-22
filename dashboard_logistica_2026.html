@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOFOFA — Comité de Logística 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #151820;
+    --surface2: #1c2030;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0f2f7;
+    --muted: #8892a4;
+    --accent: #3b82f6;
+    --accent2: #10b981;
+    --accent3: #f59e0b;
+    --accent4: #ef4444;
+    --accent5: #8b5cf6;
+    --accent6: #ec4899;
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5; min-height: 100vh; }
+
+  /* Header */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 32px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
+  .header-left { display: flex; align-items: center; gap: 20px; }
+  .logo { font-size: 13px; font-weight: 600; letter-spacing: 0.12em; color: var(--text); text-transform: uppercase; }
+  .logo span { color: var(--accent); }
+  .divider { width: 1px; height: 20px; background: var(--border2); }
+  .report-title { font-size: 13px; color: var(--muted); }
+  .badge { background: rgba(59,130,246,0.15); color: var(--accent); border: 1px solid rgba(59,130,246,0.3); padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+
+  /* Nav tabs */
+  .nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 32px; display: flex; gap: 4px; overflow-x: auto; }
+  .nav-btn { padding: 12px 16px; font-size: 12px; font-weight: 500; color: var(--muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; font-family: var(--font); transition: color 0.15s; }
+  .nav-btn:hover { color: var(--text); }
+  .nav-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  /* Main layout */
+  .main { padding: 24px 32px; max-width: 1400px; }
+
+  /* Pages */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* KPI row */
+  .kpi-row { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 12px; margin-bottom: 24px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; position: relative; overflow: hidden; transition: border-color 0.18s, transform 0.15s, box-shadow 0.18s; }
+  .kpi[data-page] { cursor: pointer; }
+  .kpi[data-page]:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
+  .kpi[data-page]:hover .kpi-arrow { opacity: 1; }
+  .kpi[data-page]:active { transform: translateY(0); }
+  .kpi.blue[data-page]:hover { border-color: rgba(59,130,246,0.4); }
+  .kpi.green[data-page]:hover { border-color: rgba(16,185,129,0.4); }
+  .kpi.amber[data-page]:hover { border-color: rgba(245,158,11,0.4); }
+  .kpi.red[data-page]:hover { border-color: rgba(239,68,68,0.4); }
+  .kpi.purple[data-page]:hover { border-color: rgba(139,92,246,0.4); }
+  .kpi.pink[data-page]:hover { border-color: rgba(236,72,153,0.4); }
+  .kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .kpi.blue::before { background: var(--accent); }
+  .kpi.green::before { background: var(--accent2); }
+  .kpi.amber::before { background: var(--accent3); }
+  .kpi.red::before { background: var(--accent4); }
+  .kpi.purple::before { background: var(--accent5); }
+  .kpi.pink::before { background: var(--accent6); }
+  .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .kpi-value { font-size: 28px; font-weight: 600; color: var(--text); line-height: 1; }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .kpi-arrow { position: absolute; bottom: 10px; right: 12px; font-size: 14px; opacity: 0; transition: opacity 0.18s; color: var(--muted); }
+
+  /* Grid layouts */
+  .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; margin-bottom: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; margin-bottom: 16px; }
+  .grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; margin-bottom: 16px; }
+  .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .card-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .card-title .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .card-title .dot.blue { background: var(--accent); }
+  .card-title .dot.green { background: var(--accent2); }
+  .card-title .dot.amber { background: var(--accent3); }
+  .card-title .dot.red { background: var(--accent4); }
+  .card-title .dot.purple { background: var(--accent5); }
+
+  /* Chart containers */
+  .chart-wrap { position: relative; width: 100%; }
+
+  /* Bar rows (custom horizontal bars) */
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .bar-row:last-child { margin-bottom: 0; }
+  .bar-label { font-size: 12px; color: var(--text); min-width: 170px; max-width: 170px; line-height: 1.3; }
+  .bar-track { flex: 1; height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .bar-val { font-size: 12px; font-weight: 500; color: var(--muted); min-width: 28px; text-align: right; font-family: var(--mono); }
+
+  /* Percent blocks */
+  .pct-block { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .pct-block:last-child { border-bottom: none; }
+  .pct-label { font-size: 13px; color: var(--text); flex: 1; }
+  .pct-bar-wrap { width: 120px; }
+  .pct-bar-bg { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+  .pct-bar-fg { height: 100%; border-radius: 3px; }
+  .pct-num { font-size: 12px; font-weight: 600; color: var(--text); font-family: var(--mono); min-width: 36px; text-align: right; }
+  .pct-tag { font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
+  .tag-si { background: rgba(16,185,129,0.15); color: var(--accent2); }
+  .tag-no { background: rgba(255,255,255,0.06); color: var(--muted); }
+
+  /* Donut chart */
+  .donut-wrap { display: flex; align-items: center; gap: 20px; }
+  .donut-legend { flex: 1; }
+  .donut-legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; color: var(--text); }
+  .legend-sq { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* Respondent list */
+  .resp-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .resp-item:last-child { border-bottom: none; }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+  .resp-info { flex: 1; min-width: 0; }
+  .resp-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .resp-co { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .resp-cargo { font-size: 11px; color: var(--muted); text-align: right; max-width: 140px; line-height: 1.3; }
+
+  /* Propuestas */
+  .propuesta-item { padding: 10px 14px; background: var(--surface2); border-radius: 8px; border-left: 3px solid var(--accent); margin-bottom: 8px; font-size: 12px; color: var(--text); line-height: 1.5; }
+  .propuesta-item:last-child { margin-bottom: 0; }
+
+  /* Tags extra */
+  .tag-item { display: inline-block; background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; padding: 5px 10px; margin: 4px; font-size: 12px; color: var(--text); }
+
+  /* Heatmap-style prevalence */
+  .heat-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+  .heat-cell { background: var(--surface2); border-radius: 8px; padding: 14px; text-align: center; }
+  .heat-cell .h-pct { font-size: 24px; font-weight: 600; }
+  .heat-cell .h-label { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.3; }
+  .heat-cell .h-detail { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: var(--mono); }
+
+  /* Pair table */
+  .pair-table { display: grid; grid-template-columns: 1fr 1.4fr; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+  .pair-header { padding: 8px 14px; background: rgba(255,255,255,0.04); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); border-bottom: 1px solid var(--border); }
+  .pair-header.right { border-left: 1px solid var(--border); }
+  .pair-cell { padding: 11px 14px; border-bottom: 1px solid var(--border); }
+  .pair-cell:last-child, .pair-cell.no-border { border-bottom: none; }
+  .pair-cell.right { border-left: 1px solid var(--border); font-size: 12px; color: var(--text); line-height: 1.55; }
+  .pair-barrier { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .pair-stat { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+  /* Clickable barrier row in resumen */
+  .b-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 8px; border-radius: 5px; cursor: pointer; transition: background 0.12s; margin: 2px -8px; }
+  .b-row:hover { background: rgba(255,255,255,0.06); }
+
+  /* Back button */
+  .btn-back { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--border2); color: var(--muted); font-size: 12px; font-weight: 500; font-family: var(--font); padding: 6px 14px; border-radius: 6px; cursor: pointer; margin-bottom: 18px; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+  .btn-back:hover { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.35); color: var(--accent); }
+  .btn-back svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+  /* Scroll */
+  .scroll-list { max-height: 320px; overflow-y: auto; }
+  .scroll-list::-webkit-scrollbar { width: 4px; }
+  .scroll-list::-webkit-scrollbar-track { background: transparent; }
+  .scroll-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* Section label */
+  .section-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; margin-top: 4px; }
+
+  /* Watermark */
+  .watermark { text-align: center; font-size: 11px; color: rgba(255,255,255,0.15); padding: 24px 0 8px; font-family: var(--mono); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo"><span>SOFOFA</span> Comité de Logística</div>
+    <div class="divider"></div>
+    <div class="report-title">Encuesta 2026 — Resultados preliminares</div>
+  </div>
+  <div class="badge" id="badge-count">23 respuestas · 21 abr 2026</div>
+</div>
+
+<div id="status-bar" style="background:var(--surface);border-bottom:1px solid var(--border);padding:6px 32px;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--muted)">
+  <span id="status-msg">⬤ &nbsp;Conectado a Google Sheets — actualizando cada 5 minutos</span>
+  <span style="display:flex;align-items:center;gap:12px">
+    <span id="last-updated"></span>
+    <button onclick="fetchAndUpdate()" id="refresh-btn" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);color:var(--accent);font-size:11px;font-family:var(--font);padding:3px 10px;border-radius:4px;cursor:pointer">↻ Actualizar</button>
+  </span>
+</div>
+
+<div class="nav" id="nav">
+  <button class="nav-btn active" onclick="showPage('resumen')">Resumen ejecutivo</button>
+  <button class="nav-btn" onclick="showPage('portuaria')">Logística portuaria</button>
+  <button class="nav-btn" onclick="showPage('carretera')">Transporte carretera</button>
+  <button class="nav-btn" onclick="showPage('aereo')">Transporte aéreo</button>
+  <button class="nav-btn" onclick="showPage('infraestructura')">Infraestructura</button>
+  <button class="nav-btn" onclick="showPage('aduanera')">Facilitación aduanera</button>
+  <button class="nav-btn" onclick="showPage('regulatoria')">Agenda regulatoria</button>
+  <button class="nav-btn" onclick="showPage('temas')">Temas adicionales</button>
+  <button class="nav-btn" onclick="showPage('participantes')">Participantes</button>
+</div>
+
+<div class="main">
+
+<!-- ===== RESUMEN EJECUTIVO ===== -->
+<div class="page active" id="page-resumen">
+  <div class="kpi-row">
+    <div class="kpi blue" data-page="participantes" onclick="showPage('participantes')"><div class="kpi-label">Respuestas</div><div class="kpi-value" id="kpi-total">23</div><div class="kpi-sub" id="kpi-total-sub">empresas y gremios</div><div class="kpi-arrow">→</div></div>
+    <div class="kpi green" data-page="portuaria" onclick="showPage('portuaria')"><div class="kpi-label">Tema más urgente</div><div class="kpi-value" style="font-size:16px;margin-top:4px">Log. Portuaria</div><div class="kpi-sub" id="kpi-prio1-sub">18 / 23 votos</div><div class="kpi-arrow">→</div></div>
+    <div class="kpi amber" data-page="carretera" onclick="showPage('carretera')"><div class="kpi-label">Problemas carretera</div><div class="kpi-value" id="kpi-carr-pct">52%</div><div class="kpi-sub" id="kpi-carr-sub">reportan problemas</div><div class="kpi-arrow">→</div></div>
+    <div class="kpi red" data-page="carretera" onclick="showPage('carretera')"><div class="kpi-label">Problema #1 carretera</div><div class="kpi-value" style="font-size:16px;margin-top:4px">Inseguridad</div><div class="kpi-sub" id="kpi-carr1-sub">5 de 12 casos</div><div class="kpi-arrow">→</div></div>
+    <div class="kpi purple" data-page="portuaria" onclick="showPage('portuaria')"><div class="kpi-label">Puerto crítico</div><div class="kpi-value" style="font-size:18px;margin-top:4px">San Antonio</div><div class="kpi-sub" id="kpi-puerto-sub">4 menciones</div><div class="kpi-arrow">→</div></div>
+    <div class="kpi pink"><div class="kpi-label">Temas sin cubrir</div><div class="kpi-value">11</div><div class="kpi-sub">sugerencias adicionales</div></div>
+  </div>
+
+  <div class="grid-2-1">
+    <div class="card">
+      <div class="card-title"><div class="dot blue"></div>Priorización — ámbitos más urgentes para la agenda 2026 (máx. 3 por encuestado)</div>
+      <div class="chart-wrap" style="height:240px">
+        <canvas id="chart-prio" role="img" aria-label="Priorización agenda 2026"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot green"></div>Prevalencia de problemas por ámbito</div>
+      <div class="heat-grid">
+        <div class="heat-cell" style="cursor:pointer;transition:opacity 0.15s" onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'" onclick="showPage('carretera')"><div class="h-pct" id="hpct-carr" style="color:var(--accent3)">52%</div><div class="h-label">Transporte carretera</div><div class="h-detail" id="hdet-carr">12 / 23 →</div></div>
+        <div class="heat-cell" style="cursor:pointer;transition:opacity 0.15s" onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'" onclick="showPage('portuaria')"><div class="h-pct" id="hpct-port" style="color:var(--accent)">43%</div><div class="h-label">Logística portuaria</div><div class="h-detail" id="hdet-port">10 / 23 →</div></div>
+        <div class="heat-cell" style="cursor:pointer;transition:opacity 0.15s" onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'" onclick="showPage('aduanera')"><div class="h-pct" id="hpct-adua" style="color:var(--accent2)">43%</div><div class="h-label">Fac. aduanera</div><div class="h-detail" id="hdet-adua">10 / 23 →</div></div>
+        <div class="heat-cell" style="cursor:pointer;transition:opacity 0.15s" onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'" onclick="showPage('aereo')"><div class="h-pct" id="hpct-aer" style="color:var(--accent6)">22%</div><div class="h-label">Transporte aéreo</div><div class="h-detail" id="hdet-aer">5 / 23 →</div></div>
+        <div class="heat-cell" style="cursor:pointer;transition:opacity 0.15s" onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'" onclick="showPage('infraestructura')"><div class="h-pct" id="hpct-infra" style="color:var(--accent5)">22%</div><div class="h-label">Infraestructura</div><div class="h-detail" id="hdet-infra">5 / 23 →</div></div>
+        <div class="heat-cell" style="cursor:pointer;transition:opacity 0.15s" onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'" onclick="showPage('regulatoria')"><div class="h-pct" id="hpct-reg" style="color:var(--muted)">22%</div><div class="h-label">Agenda regulatoria</div><div class="h-detail" id="hdet-reg">5 / 23 →</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="card-title"><div class="dot red"></div>Principales Barreras Identificadas por Ámbito</div>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px" id="barreras-grid">
+      <div style="background:var(--surface2);border-radius:8px;padding:14px">
+        <div onclick="showPage('portuaria')" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:5px">🚢 Log. Portuaria <span style="font-size:10px;opacity:.6">→</span></div>
+        <div class="b-row" onclick="showPage('portuaria')"><span style="font-size:12px;color:var(--text)">Ingreso al puerto</span><span style="font-size:11px;font-weight:600;color:var(--accent);font-family:var(--mono)">4 · 40%</span></div>
+        <div class="b-row" onclick="showPage('portuaria')"><span style="font-size:12px;color:var(--text)">Espera de atraque</span><span style="font-size:11px;font-weight:600;color:var(--accent);font-family:var(--mono)">3 · 30%</span></div>
+        <div class="b-row" onclick="showPage('portuaria')"><span style="font-size:12px;color:var(--text)">Salida del puerto</span><span style="font-size:11px;font-weight:600;color:var(--accent);font-family:var(--mono)">2 · 20%</span></div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:14px">
+        <div onclick="showPage('carretera')" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--accent3);margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:5px">🚛 Transporte Carretera <span style="font-size:10px;opacity:.6">→</span></div>
+        <div class="b-row" onclick="showPage('carretera')"><span style="font-size:12px;color:var(--text)">Inseguridad en rutas</span><span style="font-size:11px;font-weight:600;color:var(--accent3);font-family:var(--mono)">5 · 42%</span></div>
+        <div class="b-row" onclick="showPage('carretera')"><span style="font-size:12px;color:var(--text)">Regulación pesos/dim.</span><span style="font-size:11px;font-weight:600;color:var(--accent3);font-family:var(--mono)">3 · 25%</span></div>
+        <div class="b-row" onclick="showPage('carretera')"><span style="font-size:12px;color:var(--text)">Restricciones circulación</span><span style="font-size:11px;font-weight:600;color:var(--accent3);font-family:var(--mono)">2 · 17%</span></div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:14px">
+        <div onclick="showPage('aereo')" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--accent6);margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:5px">✈️ Transporte Aéreo <span style="font-size:10px;opacity:.6">→</span></div>
+        <div class="b-row" onclick="showPage('aereo')"><span style="font-size:12px;color:var(--text)">Demoras aforo/fisc.</span><span style="font-size:11px;font-weight:600;color:var(--accent6);font-family:var(--mono)">2 · 40%</span></div>
+        <div class="b-row" onclick="showPage('aereo')"><span style="font-size:12px;color:var(--text)">Costos transferencia altos</span><span style="font-size:11px;font-weight:600;color:var(--accent6);font-family:var(--mono)">1 · 20%</span></div>
+        <div class="b-row" onclick="showPage('aereo')"><span style="font-size:12px;color:var(--text)">Limitaciones frecuencias</span><span style="font-size:11px;font-weight:600;color:var(--accent6);font-family:var(--mono)">1 · 20%</span></div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:14px">
+        <div onclick="showPage('infraestructura')" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--accent5);margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:5px">🏗️ Infraestructura <span style="font-size:10px;opacity:.6">→</span></div>
+        <div class="b-row" onclick="showPage('infraestructura')"><span style="font-size:12px;color:var(--text)">Accesos viales a puertos</span><span style="font-size:11px;font-weight:600;color:var(--accent5);font-family:var(--mono)">2 · 40%</span></div>
+        <div class="b-row" onclick="showPage('infraestructura')"><span style="font-size:12px;color:var(--text)">Rutas p/ equipos sobredim.</span><span style="font-size:11px;font-weight:600;color:var(--accent5);font-family:var(--mono)">1 · 20%</span></div>
+        <div class="b-row" onclick="showPage('infraestructura')"><span style="font-size:12px;color:var(--text)">Paso fronterizo Puyehue</span><span style="font-size:11px;font-weight:600;color:var(--accent5);font-family:var(--mono)">1 · 20%</span></div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:14px">
+        <div onclick="showPage('aduanera')" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--accent2);margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:5px">🛃 Facilitación Aduanera <span style="font-size:10px;opacity:.6">→</span></div>
+        <div class="b-row" onclick="showPage('aduanera')"><span style="font-size:12px;color:var(--text)">Puerto destino/importación</span><span style="font-size:11px;font-weight:600;color:var(--accent2);font-family:var(--mono)">4 · 40%</span></div>
+        <div class="b-row" onclick="showPage('aduanera')"><span style="font-size:12px;color:var(--text)">Previo al embarque</span><span style="font-size:11px;font-weight:600;color:var(--accent2);font-family:var(--mono)">3 · 30%</span></div>
+        <div class="b-row" onclick="showPage('aduanera')"><span style="font-size:12px;color:var(--text)">Puerto de origen / Tránsito</span><span style="font-size:11px;font-weight:600;color:var(--accent2);font-family:var(--mono)">1 · 10%</span></div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:14px">
+        <div onclick="showPage('regulatoria')" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--accent4);margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:5px">⚖️ Agenda Regulatoria <span style="font-size:10px;opacity:.6">→</span></div>
+        <div class="b-row" onclick="showPage('regulatoria')"><span style="font-size:12px;color:var(--text)">Decreto 154/158 carretera</span><span style="font-size:11px;font-weight:600;color:var(--accent4);font-family:var(--mono)">2 · 40%</span></div>
+        <div class="b-row" onclick="showPage('regulatoria')"><span style="font-size:12px;color:var(--text)">Permisología / Boletines</span><span style="font-size:11px;font-weight:600;color:var(--accent4);font-family:var(--mono)">1 · 20%</span></div>
+        <div class="b-row" onclick="showPage('regulatoria')"><span style="font-size:12px;color:var(--text)">Control tributario portuario</span><span style="font-size:11px;font-weight:600;color:var(--accent4);font-family:var(--mono)">1 · 20%</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LOGÍSTICA PORTUARIA ===== -->
+<div class="page" id="page-portuaria">
+  <button class="btn-back" onclick="showPage('resumen')"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>Volver al Resumen Ejecutivo</button>
+  <div class="kpi-row" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+    <div class="kpi blue"><div class="kpi-label">Reportan problemas</div><div class="kpi-value">10</div><div class="kpi-sub">de 23 encuestados (43%)</div></div>
+    <div class="kpi amber"><div class="kpi-label">Puerto más crítico</div><div class="kpi-value" style="font-size:18px;margin-top:4px">San Antonio</div><div class="kpi-sub">4 menciones directas</div></div>
+    <div class="kpi red"><div class="kpi-label">Etapa más conflictiva</div><div class="kpi-value" style="font-size:14px;margin-top:6px">Ingreso</div><div class="kpi-sub">4 de 10 casos</div></div>
+    <div class="kpi green"><div class="kpi-label">Prioridad agenda</div><div class="kpi-value">#1</div><div class="kpi-sub">18 votos en priorización</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><div class="dot blue"></div>Puertos con problemas reportados</div>
+      <div class="bar-row"><div class="bar-label">San Antonio</div><div class="bar-track"><div class="bar-fill" style="width:60%;background:var(--accent)"></div></div><div class="bar-val">3</div></div>
+      <div class="bar-row"><div class="bar-label">Valparaíso</div><div class="bar-track"><div class="bar-fill" style="width:40%;background:var(--accent)"></div></div><div class="bar-val">2</div></div>
+      <div class="bar-row"><div class="bar-label">Zona central (San Antonio–Valparaíso)</div><div class="bar-track"><div class="bar-fill" style="width:20%;background:rgba(59,130,246,0.5)"></div></div><div class="bar-val">1</div></div>
+      <div class="bar-row"><div class="bar-label">Puertos Zona Central</div><div class="bar-track"><div class="bar-fill" style="width:20%;background:rgba(59,130,246,0.5)"></div></div><div class="bar-val">1</div></div>
+      <div class="bar-row"><div class="bar-label">Talcahuano</div><div class="bar-track"><div class="bar-fill" style="width:20%;background:rgba(59,130,246,0.3)"></div></div><div class="bar-val">1</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot red"></div>Etapas con mayores problemas</div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="chart-etapas" role="img" aria-label="Etapas con problemas en logística portuaria"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><div class="dot amber"></div>Barreras Identificadas y Soluciones Propuestas — Logística Portuaria</div>
+    <div class="pair-table">
+      <div class="pair-header">Barrera identificada</div>
+      <div class="pair-header right">Solución propuesta</div>
+      <div class="pair-cell">
+        <div class="pair-barrier">Ingreso al puerto</div>
+        <div class="pair-stat">4 menciones · 40% de afectados</div>
+      </div>
+      <div class="pair-cell right">Mesa de trabajo permanente con todas las entidades privadas. Modelo Port Everglade (Fort Lauderdale, Miami). Aplicar IA para mejorar entrega de contenedores full (retiro directo demora hasta 5 días). <span style="color:var(--muted);font-size:11px">— Empresas Perrot, Typack S.A.</span></div>
+      <div class="pair-cell">
+        <div class="pair-barrier">Espera de atraque</div>
+        <div class="pair-stat">3 menciones · 30% de afectados</div>
+      </div>
+      <div class="pair-cell right">Tercer turno y operación 24/7. Mejorar planificación en períodos de peak predecibles que generan retrasos. <span style="color:var(--muted);font-size:11px">— SalmonChile, Cristalerias de Chile</span></div>
+      <div class="pair-cell">
+        <div class="pair-barrier">Salida del puerto</div>
+        <div class="pair-stat">2 menciones · 20% de afectados</div>
+      </div>
+      <div class="pair-cell right">Subir restricción de altura de ola. Dejar turnos en momentos de colación para no atrasar faenas. <span style="color:var(--muted);font-size:11px">— Molineros del Centro</span></div>
+      <div class="pair-cell" style="border-bottom:none">
+        <div class="pair-barrier">Capacidad portuaria insuficiente</div>
+        <div class="pair-stat">zona central · 5ª región</div>
+      </div>
+      <div class="pair-cell right" style="border-bottom:none">Revisar capacidad portuaria de la zona central y ajustarla a demanda real para atender importaciones y exportaciones con costos competitivos. <span style="color:var(--muted);font-size:11px">— Aceros AZA</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CARRETERA ===== -->
+<div class="page" id="page-carretera">
+  <button class="btn-back" onclick="showPage('resumen')"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>Volver al Resumen Ejecutivo</button>
+  <div class="kpi-row" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+    <div class="kpi amber"><div class="kpi-label">Reportan problemas</div><div class="kpi-value">12</div><div class="kpi-sub">de 23 encuestados (52%)</div></div>
+    <div class="kpi red"><div class="kpi-label">Problema #1</div><div class="kpi-value" style="font-size:16px;margin-top:4px">Inseguridad</div><div class="kpi-sub">5 de 12 casos</div></div>
+    <div class="kpi blue"><div class="kpi-label">Zona más afectada</div><div class="kpi-value" style="font-size:16px;margin-top:4px">Centro-Norte</div><div class="kpi-sub">5 menciones</div></div>
+    <div class="kpi green"><div class="kpi-label">Autoridad responsable</div><div class="kpi-value" style="font-size:14px;margin-top:6px">Carabineros</div><div class="kpi-sub">5 de 12 señalan</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><div class="dot red"></div>Problemas específicos en transporte de carga por carretera</div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="chart-carr-prob" role="img" aria-label="Problemas en transporte de carga por carretera"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot blue"></div>Zona geográfica donde se concentran los problemas</div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="chart-zonas" role="img" aria-label="Zonas geográficas con problemas en carretera"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><div class="dot amber"></div>Autoridad o institución responsable señalada</div>
+      <div class="bar-row"><div class="bar-label">Carabineros / Fuerzas de Orden</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--accent4)"></div></div><div class="bar-val">5</div></div>
+      <div class="bar-row"><div class="bar-label">Dirección de Vialidad</div><div class="bar-track"><div class="bar-fill" style="width:40%;background:var(--accent3)"></div></div><div class="bar-val">2</div></div>
+      <div class="bar-row"><div class="bar-label">Min. Transportes y Telec.</div><div class="bar-track"><div class="bar-fill" style="width:20%;background:var(--accent)"></div></div><div class="bar-val">1</div></div>
+      <div class="bar-row"><div class="bar-label">Dirección de Concesiones MOP</div><div class="bar-track"><div class="bar-fill" style="width:20%;background:var(--accent)"></div></div><div class="bar-val">1</div></div>
+      <div class="bar-row"><div class="bar-label">Ministerio de Obras Públicas</div><div class="bar-track"><div class="bar-fill" style="width:20%;background:var(--accent)"></div></div><div class="bar-val">1</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot green"></div>Barreras Identificadas y Soluciones Propuestas</div>
+      <div class="pair-table">
+        <div class="pair-header">Barrera identificada</div>
+        <div class="pair-header right">Solución propuesta</div>
+        <div class="pair-cell"><div class="pair-barrier">Inseguridad en rutas</div><div class="pair-stat">5 menciones · 42% de afectados</div></div>
+        <div class="pair-cell right">Aumentar penas y patrullajes en zonas críticas. Resguardo en zonas de descanso de conductores. Mejorar nivel de seguridad en carretera. Mayor control de ruta. <span style="color:var(--muted);font-size:11px">— Múltiples empresas</span></div>
+        <div class="pair-cell"><div class="pair-barrier">Regulación pesos y dimensiones</div><div class="pair-stat">3 menciones · 25% de afectados</div></div>
+        <div class="pair-cell right">Desarrollar propuesta de transporte con bitrenes de alta productividad. Revisar estándares y configuración de vehículos de carga para aumentar eficiencia. <span style="color:var(--muted);font-size:11px">— Coca-Cola Andina, Empresas Perrot</span></div>
+        <div class="pair-cell" style="border-bottom:none"><div class="pair-barrier">Restricciones de circulación</div><div class="pair-stat">2 menciones · 17% de afectados</div></div>
+        <div class="pair-cell right" style="border-bottom:none">Ampliar el tiempo disponible de carga y descarga en el centro. Firma de documentos con más frecuencia en la semana. <span style="color:var(--muted);font-size:11px">— Sodexo, Farmoquímica</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TRANSPORTE AÉREO ===== -->
+<div class="page" id="page-aereo">
+  <button class="btn-back" onclick="showPage('resumen')"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>Volver al Resumen Ejecutivo</button>
+  <div class="kpi-row" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+    <div class="kpi pink"><div class="kpi-label">Reportan problemas</div><div class="kpi-value">5</div><div class="kpi-sub">de 23 encuestados (22%)</div></div>
+    <div class="kpi amber"><div class="kpi-label">Aeropuerto afectado</div><div class="kpi-value" style="font-size:16px;margin-top:4px">AMB Santiago</div><div class="kpi-sub">100% de los casos</div></div>
+    <div class="kpi red"><div class="kpi-label">Problema #1</div><div class="kpi-value" style="font-size:14px;margin-top:6px">Demoras aforo/fisc.</div><div class="kpi-sub">2 de 4 casos</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><div class="dot pink"></div>Problemas específicos reportados</div>
+      <div class="bar-row" style="margin-bottom:14px"><div class="bar-label">Demoras aforo y fiscalización</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--accent6)"></div></div><div class="bar-val">2</div></div>
+      <div class="bar-row" style="margin-bottom:14px"><div class="bar-label">Costos de transferencia altos</div><div class="bar-track"><div class="bar-fill" style="width:50%;background:rgba(236,72,153,0.5)"></div></div><div class="bar-val">1</div></div>
+      <div class="bar-row"><div class="bar-label">Limitaciones frecuencias/destinos</div><div class="bar-track"><div class="bar-fill" style="width:50%;background:rgba(236,72,153,0.5)"></div></div><div class="bar-val">1</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot amber"></div>Barreras Identificadas y Soluciones Propuestas</div>
+      <div class="pair-table">
+        <div class="pair-header">Barrera identificada</div>
+        <div class="pair-header right">Solución propuesta</div>
+        <div class="pair-cell"><div class="pair-barrier">Demoras en aforo y fiscalización</div><div class="pair-stat">2 menciones · 40% de afectados</div></div>
+        <div class="pair-cell right">Aumentar dotación y/o automatizar procesos de aforo en Aduanas. Permitir operadores de carga fuera del aeropuerto con pallets listos para cargar al avión. <span style="color:var(--muted);font-size:11px">— BO Packaging, SalmonChile</span></div>
+        <div class="pair-cell"><div class="pair-barrier">Costos de transferencia altos</div><div class="pair-stat">1 mención · 20% de afectados</div></div>
+        <div class="pair-cell right">Mesa de trabajo recurrente con toda la cadena para optimizar recursos y reducir costos. <span style="color:var(--muted);font-size:11px">— Empresas Perrot</span></div>
+        <div class="pair-cell" style="border-bottom:none"><div class="pair-barrier">Limitaciones de frecuencias</div><div class="pair-stat">1 mención · 20% de afectados</div></div>
+        <div class="pair-cell right" style="border-bottom:none">Mejorar flujos y tiempos de procesos, mejor coordinación de aerolíneas para ampliar disponibilidad. <span style="color:var(--muted);font-size:11px">— BO Packaging</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== INFRAESTRUCTURA ===== -->
+<div class="page" id="page-infraestructura">
+  <button class="btn-back" onclick="showPage('resumen')"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>Volver al Resumen Ejecutivo</button>
+  <div class="kpi-row" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+    <div class="kpi purple"><div class="kpi-label">Reportan brechas</div><div class="kpi-value">5</div><div class="kpi-sub">de 23 encuestados (22%)</div></div>
+    <div class="kpi amber"><div class="kpi-label">Ministerio responsable</div><div class="kpi-value" style="font-size:14px;margin-top:6px">MOP / MTT</div><div class="kpi-sub">señalado en todos los casos</div></div>
+    <div class="kpi blue"><div class="kpi-label">Prioridad agenda</div><div class="kpi-value">#4</div><div class="kpi-sub">9 votos en priorización</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><div class="dot purple"></div>Barreras Identificadas y Soluciones Propuestas — Infraestructura</div>
+    <div class="pair-table">
+      <div class="pair-header">Barrera identificada</div>
+      <div class="pair-header right">Solución propuesta</div>
+      <div class="pair-cell"><div class="pair-barrier">Accesos viales a puertos</div><div class="pair-stat">2 menciones · 40% de afectados</div></div>
+      <div class="pair-cell right">Mesa de trabajo entre sector público y privado liderada por SOFOFA. Programa de inversión de infraestructura vial para optimización de toda la cadena. <span style="color:var(--muted);font-size:11px">— Empresas Perrot, AES Andes</span></div>
+      <div class="pair-cell"><div class="pair-barrier">Rutas para equipos sobredimensionados</div><div class="pair-stat">1 mención · 20% de afectados</div></div>
+      <div class="pair-cell right">Programa de inversión infraestructura vial para sitios de desarrollo de proyectos, liderado por Min. de Transportes. <span style="color:var(--muted);font-size:11px">— AES Andes</span></div>
+      <div class="pair-cell" style="border-bottom:none"><div class="pair-barrier">Complejo Fronterizo Puyehue sin reponer</div><div class="pair-stat">1 mención · quemado hace 15 años</div></div>
+      <div class="pair-cell right" style="border-bottom:none">Dar prioridad presidencial a la reposición del Complejo Fronterizo Cardenal Samoré y licitar concesión ruta doble vía 215. <span style="color:var(--muted);font-size:11px">— Aldea Los Jardines</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FACILITACIÓN ADUANERA ===== -->
+<div class="page" id="page-aduanera">
+  <button class="btn-back" onclick="showPage('resumen')"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>Volver al Resumen Ejecutivo</button>
+  <div class="kpi-row" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+    <div class="kpi green"><div class="kpi-label">Reportan problemas</div><div class="kpi-value">10</div><div class="kpi-sub">de 23 encuestados (43%)</div></div>
+    <div class="kpi amber"><div class="kpi-label">Institución responsable</div><div class="kpi-value" style="font-size:14px;margin-top:6px">Aduanas / SNA</div><div class="kpi-sub">principal señalada</div></div>
+    <div class="kpi blue"><div class="kpi-label">Etapa más problemática</div><div class="kpi-value" style="font-size:14px;margin-top:6px">Puerto destino</div><div class="kpi-sub">4 menciones</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><div class="dot green"></div>Etapas del proceso con problemas</div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="chart-aduana-etapas" role="img" aria-label="Etapas con problemas en facilitación aduanera"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot amber"></div>Barreras Identificadas y Soluciones Propuestas</div>
+      <div class="pair-table">
+        <div class="pair-header">Barrera identificada</div>
+        <div class="pair-header right">Solución propuesta</div>
+        <div class="pair-cell"><div class="pair-barrier">Puerto de destino / importación</div><div class="pair-stat">4 menciones · 40% de afectados</div></div>
+        <div class="pair-cell right">Digitalizar proceso de BL en todas las navieras. Automatizar y cruzar información para devolución de IVA exportador — trámite sin burocracia. <span style="color:var(--muted);font-size:11px">— Typack S.A., BO Packaging</span></div>
+        <div class="pair-cell"><div class="pair-barrier">Previo al embarque</div><div class="pair-stat">3 menciones · 30% de afectados</div></div>
+        <div class="pair-cell right">Ventanilla única más estricta. Mayor flexibilidad en representación del Agente de Aduanas ante la SNA. <span style="color:var(--muted);font-size:11px">— Empresas Perrot, Aguas Andinas</span></div>
+        <div class="pair-cell" style="border-bottom:none"><div class="pair-barrier">Puerto de origen / Tránsito fronterizo</div><div class="pair-stat">1 mención · 10% de afectados</div></div>
+        <div class="pair-cell right" style="border-bottom:none">Eliminar duplicidad de procedimientos y costos asociados a la internación de materias primas. <span style="color:var(--muted);font-size:11px">— Molineros del Centro</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== AGENDA REGULATORIA ===== -->
+<div class="page" id="page-regulatoria">
+  <button class="btn-back" onclick="showPage('resumen')"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>Volver al Resumen Ejecutivo</button>
+  <div class="kpi-row" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+    <div class="kpi purple"><div class="kpi-label">Identifican riesgo regulatorio</div><div class="kpi-value">5</div><div class="kpi-sub">de 23 encuestados (22%)</div></div>
+    <div class="kpi amber"><div class="kpi-label">Prioridad agenda</div><div class="kpi-value">#4</div><div class="kpi-sub">9 votos en priorización</div></div>
+    <div class="kpi red"><div class="kpi-label">Tema de alerta</div><div class="kpi-value" style="font-size:14px;margin-top:6px">Royalty portuario</div><div class="kpi-sub">riesgo activo en Congreso</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><div class="dot purple"></div>Barreras Identificadas y Soluciones Propuestas — Agenda Regulatoria</div>
+    <div class="pair-table">
+      <div class="pair-header">Barrera / Riesgo regulatorio</div>
+      <div class="pair-header right">Propuesta de modificación o reforma</div>
+      <div class="pair-cell"><div class="pair-barrier">Decreto 154 SII / Decreto 158</div><div class="pair-stat">2 menciones · carga total transporte carretera</div></div>
+      <div class="pair-cell right">Modificar Decreto 158 para permitir bitrenes de alta productividad. Ajustar a realidad operativa de guías y facturas del sector. <span style="color:var(--muted);font-size:11px">— Coca-Cola Andina</span></div>
+      <div class="pair-cell"><div class="pair-barrier">Boletines 17.653-01 y 17.041-01</div><div class="pair-stat">1 mención · permisología e inversiones</div></div>
+      <div class="pair-cell right">Renovar prioritariamente la concesión portuaria del puerto granelero en San Antonio (sitio 8). Revisar impacto de permisología en inversiones industriales. <span style="color:var(--muted);font-size:11px">— Molineros del Centro</span></div>
+      <div class="pair-cell"><div class="pair-barrier">Control tributario proceso portuario</div><div class="pair-stat">1 mención · falta control exhaustivo</div></div>
+      <div class="pair-cell right">Establecer mecanismo de control tributario-contable integral en la cadena portuaria. Implementar Red de Trenes de carga para reducir presión sobre carreteras. <span style="color:var(--muted);font-size:11px">— Empresas Perrot, Coca-Cola Andina</span></div>
+      <div class="pair-cell" style="border-bottom:none"><div class="pair-barrier">Ley reactivación turismo / tasas aeroportuarias</div><div class="pair-stat">1 mención · impacto en comercio exterior</div></div>
+      <div class="pair-cell right" style="border-bottom:none">Revisar cláusulas con impacto en tasas para turistas extranjeros que afecten la competitividad del hub aéreo. <span style="color:var(--muted);font-size:11px">— Aldea Los Jardines</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TEMAS ADICIONALES ===== -->
+<div class="page" id="page-temas">
+  <button class="btn-back" onclick="showPage('resumen')"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>Volver al Resumen Ejecutivo</button>
+  <div class="kpi-row" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+    <div class="kpi amber"><div class="kpi-label">Temas sugeridos</div><div class="kpi-value">11</div><div class="kpi-sub">sugerencias distintas recibidas</div></div>
+    <div class="kpi blue"><div class="kpi-label">Tendencia dominante</div><div class="kpi-value" style="font-size:16px;margin-top:4px">Descarbonización</div><div class="kpi-sub">ferrocarriles + electromovilidad</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><div class="dot amber"></div>Temas logísticos no cubiertos en la encuesta — mencionados espontáneamente</div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px" id="temas-grid"></div>
+  </div>
+</div>
+
+<!-- ===== PARTICIPANTES ===== -->
+<div class="page" id="page-participantes">
+  <button class="btn-back" onclick="showPage('resumen')"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>Volver al Resumen Ejecutivo</button>
+  <div class="kpi-row" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+    <div class="kpi blue"><div class="kpi-label">Total participantes</div><div class="kpi-value">23</div><div class="kpi-sub">personas respondieron</div></div>
+    <div class="kpi green"><div class="kpi-label">Organizaciones</div><div class="kpi-value">21</div><div class="kpi-sub">distintas empresas/gremios</div></div>
+    <div class="kpi amber"><div class="kpi-label">Más representada</div><div class="kpi-value" style="font-size:16px;margin-top:4px">Aceros AZA</div><div class="kpi-sub">3 respondentes</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><div class="dot blue"></div>Listado de participantes</div>
+    <div class="scroll-list" id="respondents-list"></div>
+  </div>
+</div>
+
+</div><!-- /main -->
+<div class="watermark">SOFOFA Comité de Logística · Encuesta 2026 · Confidencial — resultados presentados de forma agregada</div>
+
+<script>
+// ============================================================
+//  CONFIGURACIÓN — REEMPLAZA CON TU GOOGLE SHEET ID
+//  Para obtenerlo: abre el Google Sheet → la URL tiene la forma
+//  https://docs.google.com/spreadsheets/d/SHEET_ID/edit
+//  Copia solo el SHEET_ID y pégalo abajo.
+//  El Sheet debe estar compartido como "Cualquier persona con el enlace puede ver"
+// ============================================================
+const SHEET_ID = '2PACX-1vSJ_GPM0umz3-7h-80InEJ13nMECjyiYu7O_G_roW30_u5IbuNPMdXWr5BKubySZxL405OFlGG07suZ';
+const CSV_URL = `https://corsproxy.io/?https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?gid=1344713741&single=true&output=csv`;
+const REFRESH_MS = 5 * 60 * 1000; // cada 5 minutos
+
+// ---- Navigation ----
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach((b,i) => {
+    const pages = ['resumen','portuaria','carretera','aereo','infraestructura','aduanera','regulatoria','temas','participantes'];
+    b.classList.toggle('active', pages[i] === id);
+  });
+}
+
+// ---- CSV Parser (handles quoted fields, semicolons, commas) ----
+function parseCSVLine(line) {
+  const result = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '"') { if (inQ && line[i+1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
+    else if (line[i] === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+    else cur += line[i];
+  }
+  result.push(cur.trim()); return result;
+}
+function parseCSV(text) {
+  const lines = text.replace(/\r/g,'').split('\n');
+  const headers = parseCSVLine(lines[0]);
+  return { headers, rows: lines.slice(1).filter(l=>l.trim()).map(line => {
+    const vals = parseCSVLine(line);
+    const obj = {}; headers.forEach((h,i) => obj[h] = (vals[i]||'').replace(/^"|"$/g,''));
+    return obj;
+  })};
+}
+
+// ---- Find column by partial match ----
+function col(headers, partial, occurrence=0) {
+  let count = 0;
+  for (let h of headers) { if (h.includes(partial)) { if (count === occurrence) return h; count++; } }
+  return null;
+}
+
+// ---- Count multi-value cells (;-separated) ----
+function countMulti(rows, colName) {
+  const c = {};
+  rows.forEach(r => { (r[colName]||'').split(';').forEach(v => { v=v.trim().replace(/\.$/,''); if(v) c[v]=(c[v]||0)+1; }); });
+  return c;
+}
+function countSingle(rows, colName, val) {
+  return rows.filter(r => (r[colName]||'').trim() === val).length;
+}
+function topN(obj, n) {
+  return Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,n);
+}
+
+// ---- Chart instances (stored for updates) ----
+let chartPrio, chartEtapas, chartCarrProb, chartZonas, chartAduanaEtapas;
+const gridColor = 'rgba(255,255,255,0.06)';
+const tickColor = '#8892a4';
+Chart.register(ChartDataLabels);
+Chart.defaults.color = tickColor;
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size = 12;
+
+const tooltipStyle = {
+  backgroundColor:'rgba(15,18,28,0.95)', borderColor:'rgba(255,255,255,0.12)',
+  borderWidth:1, padding:10, titleColor:'#f0f2f7', bodyColor:'#8892a4',
+  cornerRadius:6, displayColors:true, boxWidth:10, boxHeight:10, boxPadding:4
+};
+
+function pct(v, total) { return total ? Math.round(v/total*100) : 0; }
+
+// ---- Build / Update Charts ----
+function buildCharts(d) {
+  const N = d.N;
+
+  // PRIORIZACIÓN
+  const prioLabels = d.prio.map(x=>x[0]);
+  const prioData   = d.prio.map(x=>x[1]);
+  const prioColors = ['#3b82f6','#f59e0b','#10b981','#ef4444','#8b5cf6','#ec4899'];
+  if (!chartPrio) {
+    chartPrio = new Chart(document.getElementById('chart-prio'), {
+      type:'bar', data:{ labels:prioLabels, datasets:[{ label:'Votos', data:prioData, backgroundColor:prioColors, borderRadius:4, borderSkipped:false }] },
+      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{...tooltipStyle, callbacks:{label:c=>` ${c.parsed.x} votos — ${pct(c.parsed.x,N)}% de los encuestados`}},
+          datalabels:{ anchor:'center', align:'center', color:'#fff', font:{size:11,weight:'600',family:"'DM Mono',monospace"}, formatter:v=>`${v}  |  ${pct(v,N)}%`, display:ctx=>ctx.dataset.data[ctx.dataIndex]>=3 } },
+        scales:{ x:{beginAtZero:true,max:Math.max(N,prioData[0]||N),ticks:{stepSize:1,color:tickColor},grid:{color:gridColor},border:{display:false}}, y:{ticks:{color:tickColor},grid:{display:false},border:{display:false}} } }
+    });
+  } else {
+    chartPrio.data.labels = prioLabels; chartPrio.data.datasets[0].data = prioData;
+    chartPrio.options.scales.x.max = Math.max(N, prioData[0]||N); chartPrio.update();
+  }
+
+  // ETAPAS PUERTO
+  const etLabels = d.etapasPuerto.map(x=>x[0]);
+  const etData   = d.etapasPuerto.map(x=>x[1]);
+  const etTotal  = d.siPort;
+  const etColors = ['#3b82f6','#f59e0b','#10b981','#8b5cf6'];
+  if (!chartEtapas) {
+    chartEtapas = new Chart(document.getElementById('chart-etapas'), {
+      type:'doughnut', data:{ labels:etLabels, datasets:[{data:etData, backgroundColor:etColors, borderWidth:0, hoverOffset:8}] },
+      options:{ responsive:true, maintainAspectRatio:false, cutout:'60%',
+        plugins:{ legend:{position:'right',labels:{color:tickColor,padding:14,boxWidth:12}},
+          tooltip:{...tooltipStyle, callbacks:{label:c=>` ${c.label}: ${c.raw} casos (${pct(c.raw,etTotal)}% de afectados)`}},
+          datalabels:{ color:'#fff', font:{size:11,weight:'600',family:"'DM Mono',monospace"}, formatter:v=>`${v}\n${pct(v,etTotal)}%`, display:ctx=>ctx.dataset.data[ctx.dataIndex]>=2, textAlign:'center' } } }
+    });
+  } else { chartEtapas.data.labels=etLabels; chartEtapas.data.datasets[0].data=etData; chartEtapas.update(); }
+
+  // CARRETERA PROBLEMAS
+  const cpLabels = d.probCarr.map(x=>x[0]);
+  const cpData   = d.probCarr.map(x=>x[1]);
+  const cpColors = ['#ef4444','#f59e0b','#3b82f6','#8b5cf6','#10b981'];
+  const cTotal   = d.siCarr;
+  if (!chartCarrProb) {
+    chartCarrProb = new Chart(document.getElementById('chart-carr-prob'), {
+      type:'bar', data:{ labels:cpLabels, datasets:[{label:'Menciones',data:cpData, backgroundColor:cpColors.slice(0,cpData.length), borderRadius:4, borderSkipped:false}] },
+      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{...tooltipStyle, callbacks:{label:c=>` ${c.parsed.x} empresa${c.parsed.x>1?'s':''} — ${pct(c.parsed.x,cTotal)}% de afectados`}},
+          datalabels:{ anchor:'center', align:'center', color:'#fff', font:{size:11,weight:'600',family:"'DM Mono',monospace"}, formatter:v=>`${v}  |  ${pct(v,cTotal)}%`, display:ctx=>ctx.dataset.data[ctx.dataIndex]>=2 } },
+        scales:{ x:{beginAtZero:true,max:Math.max(...cpData,1)+1,ticks:{stepSize:1,color:tickColor},grid:{color:gridColor},border:{display:false}}, y:{ticks:{color:tickColor},grid:{display:false},border:{display:false}} } }
+    });
+  } else { chartCarrProb.data.labels=cpLabels; chartCarrProb.data.datasets[0].data=cpData; chartCarrProb.data.datasets[0].backgroundColor=cpColors.slice(0,cpData.length); chartCarrProb.options.scales.x.max=Math.max(...cpData,1)+1; chartCarrProb.update(); }
+
+  // ZONAS
+  const zLabels = d.zonas.map(x=>x[0]);
+  const zData   = d.zonas.map(x=>x[1]);
+  const zColors = ['#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899'];
+  if (!chartZonas) {
+    chartZonas = new Chart(document.getElementById('chart-zonas'), {
+      type:'doughnut', data:{ labels:zLabels, datasets:[{data:zData, backgroundColor:zColors.slice(0,zData.length), borderWidth:0, hoverOffset:8}] },
+      options:{ responsive:true, maintainAspectRatio:false, cutout:'60%',
+        plugins:{ legend:{position:'right',labels:{color:tickColor,padding:14,boxWidth:12}},
+          tooltip:{...tooltipStyle, callbacks:{label:c=>` ${c.label}: ${c.raw} casos (${pct(c.raw,cTotal)}% de afectados)`}},
+          datalabels:{ color:'#fff', font:{size:11,weight:'600',family:"'DM Mono',monospace"}, formatter:v=>`${v}\n${pct(v,cTotal)}%`, display:ctx=>ctx.dataset.data[ctx.dataIndex]>=2, textAlign:'center' } } }
+    });
+  } else { chartZonas.data.labels=zLabels; chartZonas.data.datasets[0].data=zData; chartZonas.update(); }
+
+  // ADUANA ETAPAS
+  const aLabels = d.etapasAduana.map(x=>x[0]);
+  const aData   = d.etapasAduana.map(x=>x[1]);
+  const aTotal  = d.siAdua;
+  const maxA    = Math.max(...aData,1)+1;
+  const aColors = aData.map((_,i) => i===0 ? '#10b981' : `rgba(16,185,129,${Math.max(0.35,0.85-i*0.15)})`);
+  if (!chartAduanaEtapas) {
+    chartAduanaEtapas = new Chart(document.getElementById('chart-aduana-etapas'), {
+      type:'bar', data:{ labels:aLabels, datasets:[{label:'Menciones',data:aData, backgroundColor:aColors, borderRadius:4, borderSkipped:false}] },
+      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{...tooltipStyle, callbacks:{label:c=>` ${c.parsed.x} empresa${c.parsed.x>1?'s':''} — ${pct(c.parsed.x,aTotal)}% de afectados`}},
+          datalabels:{ anchor:'center', align:'center', color:'#fff', font:{size:11,weight:'600',family:"'DM Mono',monospace"}, formatter:v=>`${v}  |  ${pct(v,aTotal)}%`, display:ctx=>ctx.dataset.data[ctx.dataIndex]>=2 } },
+        scales:{ x:{beginAtZero:true,max:maxA,ticks:{stepSize:1,color:tickColor},grid:{color:gridColor},border:{display:false}}, y:{ticks:{color:tickColor,font:{size:11}},grid:{display:false},border:{display:false}} } }
+    });
+  } else { chartAduanaEtapas.data.labels=aLabels; chartAduanaEtapas.data.datasets[0].data=aData; chartAduanaEtapas.data.datasets[0].backgroundColor=aColors; chartAduanaEtapas.options.scales.x.max=maxA; chartAduanaEtapas.update(); }
+}
+
+// ---- Update KPIs and DOM ----
+function updateDOM(d) {
+  const N = d.N;
+  const p = (v,t) => pct(v,t);
+
+  // Badge
+  const now = new Date();
+  document.getElementById('badge-count').textContent = `${N} respuestas · ${now.toLocaleDateString('es-CL',{day:'numeric',month:'short',year:'numeric'})}`;
+  document.getElementById('last-updated').textContent = `Actualizado: ${now.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'})}`;
+
+  // Resumen KPIs
+  document.getElementById('kpi-total').textContent = N;
+  document.getElementById('kpi-total-sub').textContent = `empresas y gremios`;
+  document.getElementById('kpi-prio1-sub').textContent = `${d.prio[0]?.[1]||'—'} / ${N} votos`;
+  document.getElementById('kpi-carr-pct').textContent = `${p(d.siCarr,N)}%`;
+  document.getElementById('kpi-carr-sub').textContent = `reportan problemas`;
+  document.getElementById('kpi-carr1-sub').textContent = `${d.probCarr[0]?.[1]||'—'} de ${d.siCarr} casos`;
+  document.getElementById('kpi-puerto-sub').textContent = `${d.topPuerto[1]||'—'} menciones`;
+
+  // Heat cells
+  const hc = (id1,id2,si) => {
+    document.getElementById(id1).textContent = `${p(si,N)}%`;
+    document.getElementById(id2).textContent = `${si} / ${N} →`;
+  };
+  hc('hpct-carr','hdet-carr', d.siCarr);
+  hc('hpct-port','hdet-port', d.siPort);
+  hc('hpct-adua','hdet-adua', d.siAdua);
+  hc('hpct-aer', 'hdet-aer',  d.siAer);
+  hc('hpct-infra','hdet-infra',d.siInfra);
+  hc('hpct-reg', 'hdet-reg',  d.siReg);
+
+  // Respondents list
+  const list = document.getElementById('respondents-list');
+  const avColors = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316'];
+  list.innerHTML = '';
+  d.respondents.forEach((r,i) => {
+    const initials = r.n.split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+    const col = avColors[i % avColors.length];
+    list.innerHTML += `<div class="resp-item">
+      <div class="avatar" style="background:${col}22;color:${col}">${initials}</div>
+      <div class="resp-info"><div class="resp-name">${r.n}</div><div class="resp-co">${r.e}</div></div>
+      <div class="resp-cargo" style="color:var(--muted)">${r.c}</div>
+    </div>`;
+  });
+
+  // Participantes section KPI
+  document.querySelector('#page-participantes .kpi.blue .kpi-value').textContent = N;
+}
+
+// ---- Parse raw CSV data into structured object ----
+function processData(headers, rows) {
+  const N = rows.length;
+
+  // Column finders
+  const C = (partial, occ=0) => col(headers, partial, occ);
+
+  const cPrio     = C('tres ámbitos más urgentes');
+  const cPort     = C('cuellos de botella en el acceso');
+  const cEtapa    = C('En qué etapa');
+  const cPuerto   = C('En qué puerto ocurre');
+  const cCarr     = C('problemas operativos en el transporte de carga por carretera');
+  const cProbCarr = C('problemas específicos', 1); // segunda ocurrencia = carretera
+  const cZona     = C('ruta o zona geográfica');
+  const cAer      = C('problemas operativos en el transporte aéreo');
+  const cInfra    = C('infraestructura o proyecto de infraestructura');
+  const cAdua     = C('trámites aduaneros');
+  const cEtAdua   = C('etapa del proceso ocurre');
+  const cReg      = C('proyecto de ley o regulación');
+  const cNombre   = C('Nombre');
+  const cApellido = C('Apellido');
+  const cEmpresa  = C('Empresa o gremio');
+  const cCargo    = C('Cargo');
+
+  const siPort  = countSingle(rows, cPort,  'Si');
+  const siCarr  = countSingle(rows, cCarr,  'Si');
+  const siAer   = countSingle(rows, cAer,   'Si');
+  const siInfra = countSingle(rows, cInfra, 'Si');
+  const siAdua  = countSingle(rows, cAdua,  'Si');
+  const siReg   = countSingle(rows, cReg,   'Si');
+
+  const prioRaw  = countMulti(rows, cPrio);
+  const prio     = topN(prioRaw, 6);
+  const etPuerto = topN(countMulti(rows, cEtapa), 4);
+  const puertos  = topN(countMulti(rows, cPuerto), 5);
+  const probCarr = topN(countMulti(rows, cProbCarr), 5);
+  const zonas    = topN(countMulti(rows, cZona), 5);
+  const etAdua   = topN(countMulti(rows, cEtAdua), 5);
+
+  const topPuerto = puertos[0] || ['—', 0];
+
+  const respondents = rows.map(r => ({
+    n: `${(r[cNombre]||'').trim()} ${(r[cApellido]||'').trim()}`.trim(),
+    e: (r[cEmpresa]||'').trim(),
+    c: (r[cCargo]||'').trim()
+  })).filter(r => r.n);
+
+  return { N, siPort, siCarr, siAer, siInfra, siAdua, siReg,
+           prio, etapasPuerto:etPuerto, puertos, probCarr, zonas, etapasAduana:etAdua,
+           topPuerto, respondents };
+}
+
+// ---- Main fetch & update cycle ----
+async function fetchAndUpdate() {
+  const btn = document.getElementById('refresh-btn');
+  const statusMsg = document.getElementById('status-msg');
+  btn.textContent = '↻ Actualizando...'; btn.disabled = true;
+
+  try {
+    const res = await fetch(CSV_URL + '&t=' + Date.now()); // cache-bust
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const { headers, rows } = parseCSV(text);
+    const data = processData(headers, rows);
+
+    buildCharts(data);
+    updateDOM(data);
+
+    statusMsg.innerHTML = '🟢 &nbsp;Conectado a Google Sheets — datos actualizados';
+    statusMsg.style.color = 'var(--accent2)';
+    setTimeout(() => { statusMsg.innerHTML = '⬤ &nbsp;Conectado a Google Sheets — actualizando cada 5 minutos'; statusMsg.style.color = ''; }, 4000);
+
+  } catch (err) {
+    console.warn('Google Sheets fetch error:', err);
+    statusMsg.innerHTML = `🔴 &nbsp;Sin conexión a Google Sheets — mostrando datos guardados (${err.message})`;
+    statusMsg.style.color = 'var(--accent4)';
+    // Fall back to static charts if not yet built
+    if (!chartPrio) buildStaticCharts();
+  } finally {
+    btn.textContent = '↻ Actualizar'; btn.disabled = false;
+  }
+}
+
+// ---- Fallback static charts (datos hardcodeados actuales) ----
+function buildStaticCharts() {
+  const staticData = {
+    N:23, siPort:10, siCarr:12, siAer:5, siInfra:5, siAdua:10, siReg:5,
+    prio:[['Log. portuaria y concesiones',18],['Transporte carga carretera',13],['Facilitación aduanera',10],['Agenda legislativa y reg.',9],['Infraestructura vial y accesos',9],['Transporte Aéreo',4]],
+    etapasPuerto:[['Ingreso',4],['Espera de atraque',3],['Salida',2],['Operación de terminal',1]],
+    probCarr:[['Inseguridad en rutas',5],['Regulación pesos/dimensiones',3],['Restricciones de circulación',2],['Carga sobredimensionada',1]],
+    zonas:[['Centro-Norte',5],['Centro-Sur',3],['Centro',2],['Sur',2]],
+    etapasAduana:[['Puerto destino/importación',4],['Previo al embarque',3],['Puerto de origen',1],['Paso fronterizo',1],['Dev. IVA exportador',1]],
+    topPuerto:['San Antonio',4],
+    respondents:[
+      {n:'Francisco Javier Gonzalez',e:'Sodexo Chile S.A.',c:'Director de S.O.'},
+      {n:'Esteban Holloway',e:'Aceros AZA S.A.',c:'Gerente Logística y S&OP'},
+      {n:'Mauricio Perrot',e:'Empresas Perrot',c:'Presidente Ejecutivo'},
+      {n:'Pablo Siviero Martins',e:'AES Andes SA',c:'Gerente de Supply Chain'},
+      {n:'Cristián Rosas',e:'Aguas Andinas',c:'Gerente de Compras'},
+      {n:'Marcelo Moraga',e:'Aldea Los Jardines',c:'Gerente'},
+      {n:'Juliana Orrego',e:'Cristalerias de Chile S.A.',c:'Comprador Comex'},
+      {n:'Arturo Clément',e:'SalmonChile',c:'Past Presidente'},
+      {n:'Diego Pizarro',e:'Aceros AZA',c:'Encargado de Estudios'},
+      {n:'Juan Enrique Greibe',e:'Aceros AZA',c:'Gerente de Metálicos'},
+      {n:'Sergio Morales',e:'Molineros del Centro',c:'Presidente'},
+      {n:'Maria Soledad Hidalgo',e:'GTD',c:'Jefa Compras Estratégicas'},
+      {n:'Alejandro Vargas',e:'Coca-Cola Andina',c:'Gerente de Operaciones'},
+      {n:'Rodrigo Escobar',e:'BO Packaging S.A.',c:'Gerente Supply Chain'},
+      {n:'Juan Eduardo Casanova',e:'Abastible',c:'Gerente Logística'},
+      {n:'Loreto Jiménez',e:'BO Packaging S.A.',c:'Jefe de Comex'},
+      {n:'Diego Valenzuela',e:'Industrias Typack S.A.',c:'Comercio Exterior'},
+      {n:'Juan Carlos Ramm',e:'Cambiaso Hnos. S.A.C.',c:'Gerente General'},
+      {n:'Tim Stout',e:'Maersk',c:'Head of External Relations'},
+      {n:'Alejandra San Miguel',e:'ASIVA',c:'Gerente General'},
+      {n:'Dany Ramirez',e:'Droguería Farmoquímica del Pacífico',c:'Planificador'},
+      {n:'Carol Rodriguez',e:'Vidrios Lirquen S.A.',c:'Comprador/Buyer'},
+      {n:'Luis Patricio Bravo',e:'Viña Valdivieso',c:'Logística Exportaciones'},
+    ]
+  };
+  buildCharts(staticData);
+  updateDOM(staticData);
+}
+
+// ---- Temas adicionales (static) ----
+const extras = [
+  {t:'Bloqueos de rutas por gremios/comunidades', d:'Alternativas ante cortes de vías por protestas o comunidades'},
+  {t:'Costos de combustible', d:'Impacto en competitividad operativa del transporte'},
+  {t:'Ente coordinador de toda la cadena', d:'Falta un organismo que optimice el costo final del producto'},
+  {t:'Aeropuertos regionales', d:'Escasa inversión en aeropuertos como Cañal Bajo (Osorno), Antofagasta y Pto. Montt'},
+  {t:'Bajos retornos de camiones', d:'Viajes de retorno vacíos desde regiones a Santiago'},
+  {t:'Electromovilidad y descarbonización', d:'Incentivos al transporte verde e impulso al ferrocarril de carga'},
+  {t:'Red de Trenes de carga', d:'Propuesta de infraestructura ferroviaria para reducir presión sobre carreteras'},
+  {t:'Seguridad vial', d:'Accidentabilidad y condiciones de manejo en rutas nacionales'},
+  {t:'Zonas de espera para camiones', d:'Congestión fuera de puertos por falta de espacios de espera coordinados'},
+  {t:'Digitalización de procesos', d:'Reducción de dependencia de trámites manuales en la cadena'},
+  {t:'Recargos navieros (faros, balizas, TUP)', d:'Altos costos que finalmente recaen sobre el comercio exterior chileno'},
+];
+const tg = document.getElementById('temas-grid');
+const tcolors = ['#3b82f6','#f59e0b','#10b981','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316','#3b82f6','#10b981','#f59e0b'];
+extras.forEach((e,i) => {
+  tg.innerHTML += `<div style="background:var(--surface2);border-radius:8px;padding:14px;border-left:3px solid ${tcolors[i]}">
+    <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px">${e.t}</div>
+    <div style="font-size:11px;color:var(--muted);line-height:1.5">${e.d}</div>
+  </div>`;
+});
+
+// ---- Init ----
+if (SHEET_ID === 'TU_GOOGLE_SHEET_ID_AQUI') {
+  // No sheet configured — use static data and show warning
+  document.getElementById('status-msg').innerHTML = '⚠️ &nbsp;Google Sheets no configurado — mostrando datos guardados. Reemplaza SHEET_ID en el código.';
+  document.getElementById('status-msg').style.color = 'var(--accent3)';
+  buildStaticCharts();
+} else {
+  fetchAndUpdate();
+  setInterval(fetchAndUpdate, REFRESH_MS);
+}
+</script>
+
+</body>
+</html>
